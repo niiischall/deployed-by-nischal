@@ -2,68 +2,44 @@ import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { fetchPostBySlug, getAllPostSlugs, getAllPosts } from '@/lib/api';
+import { fetchPostBySlug, getAllPosts } from '@/lib/api';
 import markdownToHtml from '@/lib/markdownToHtml';
 import { getLifetimePostViews } from '@/lib/posthog';
 import Container from '@/app/_components/container';
 import Header from '@/app/_components/header';
 import DateFormatter from '@/app/_components/date-formatter';
+import { JsonLd } from '@/app/_components/json-ld';
 import { PostBody } from '@/app/_components/post-body';
 import { PostHeader } from '@/app/_components/post-header';
 import { ReadingProgress } from '@/app/_components/reading-progress';
 import { PostShare } from '@/app/_components/post-share';
 import { PostToc } from '@/app/_components/post-toc';
-import { calculateReadingTime } from '@/lib/utils';
+import { calculateReadingTime, countWords, readingMinutes } from '@/lib/utils';
+import {
+  blogPostingNode,
+  breadcrumbNode,
+  personNode,
+  websiteNode,
+} from '@/lib/jsonLd';
+import {
+  SITE_LOCALE,
+  SITE_NAME,
+  SITE_URL,
+  TWITTER_HANDLE,
+} from '@/lib/constants';
 
 export const revalidate = 60;
 
-type TocItem = {
-  id: string;
-  text: string;
-  level: 2 | 3 | 4;
-};
-
-const stripHtmlTags = (value: string) => value.replace(/<[^>]*>/g, '').trim();
-
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-
-const addHeadingIdsAndExtractToc = (html: string) => {
-  const slugCounts = new Map<string, number>();
-  const tocItems: TocItem[] = [];
-
-  const contentWithHeadingIds = html.replace(
-    /<h([2-4])([^>]*)>(.*?)<\/h\1>/gi,
-    (_, level, attributes, innerHtml) => {
-      const text = stripHtmlTags(innerHtml);
-
-      if (!text) {
-        return `<h${level}${attributes}>${innerHtml}</h${level}>`;
-      }
-
-      const baseSlug = slugify(text) || 'section';
-      const existingCount = slugCounts.get(baseSlug) ?? 0;
-      slugCounts.set(baseSlug, existingCount + 1);
-      const id = existingCount === 0 ? baseSlug : `${baseSlug}-${existingCount + 1}`;
-      const attributesWithoutId = attributes.replace(/\s+id=(["']).*?\1/gi, '');
-
-      tocItems.push({
-        id,
-        text,
-        level: Number(level) as TocItem['level'],
-      });
-
-      return `<h${level}${attributesWithoutId} id="${id}">${innerHtml}</h${level}>`;
-    }
-  );
-
-  return { contentWithHeadingIds, tocItems };
-};
+const describe = (post: {
+  seoDescription?: string;
+  excerpt: string;
+  subtitle: string;
+  title: string;
+}) =>
+  post.seoDescription ||
+  post.excerpt ||
+  post.subtitle ||
+  `Read ${post.title} on ${SITE_NAME}.`;
 
 export default async function Post(props: Params) {
   const params = await props.params;
@@ -73,40 +49,25 @@ export default async function Post(props: Params) {
     return notFound();
   }
 
-  const content = await markdownToHtml(post.content.markdown || '');
-  const { contentWithHeadingIds, tocItems } = addHeadingIdsAndExtractToc(content);
-  const readingTime = calculateReadingTime(content);
-  const postUrl = `https://blog.nischalnikit.xyz/posts/${post.slug}`;
+  const markdown = post.content.markdown || '';
+  const { html, toc } = await markdownToHtml(markdown);
+  const tocItems = toc.filter((item) => item.level <= 4) as {
+    id: string;
+    text: string;
+    level: 2 | 3 | 4;
+  }[];
+  const readingTime = calculateReadingTime(markdown);
+  const postUrl = `${SITE_URL}/posts/${post.slug}`;
   const lifetimeViews = await getLifetimePostViews(postUrl);
   const allPosts = await getAllPosts();
-  const currentPostIndex = allPosts.findIndex((entry) => entry.slug === post.slug);
-  const previousPost = currentPostIndex >= 0 ? allPosts[currentPostIndex + 1] : null;
+  const currentPostIndex = allPosts.findIndex(
+    (entry) => entry.slug === post.slug,
+  );
+  const previousPost =
+    currentPostIndex >= 0 ? allPosts[currentPostIndex + 1] : null;
   const nextPost = currentPostIndex > 0 ? allPosts[currentPostIndex - 1] : null;
-  const description =
-    post.excerpt || post.subtitle || `Read ${post.title} on deployed by nischal.`;
-  const imageUrl = post.coverImage.url || 'https://blog.nischalnikit.xyz/opengraph-image.png';
-  const blogPostingJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: post.title,
-    description,
-    datePublished: post.publishedAt,
-    dateModified: post.publishedAt,
-    image: [imageUrl],
-    mainEntityOfPage: {
-      '@type': 'WebPage',
-      '@id': postUrl,
-    },
-    author: {
-      '@type': 'Person',
-      name: post.author.name || 'Nischal Nikit',
-    },
-    publisher: {
-      '@type': 'Person',
-      name: 'Nischal Nikit',
-    },
-    url: postUrl,
-  };
+  const description = describe(post);
+  const imageUrl = post.ogImageUrl || `${SITE_URL}/opengraph-image.png`;
 
   return (
     <main>
@@ -115,21 +76,51 @@ export default async function Post(props: Params) {
         tracking={{ postSlug: post.slug, postTitle: post.title }}
       />
       <Container>
-        <script
-          type='application/ld+json'
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }}
+        <JsonLd
+          nodes={[
+            personNode(post.author.picture || undefined),
+            websiteNode(),
+            blogPostingNode({
+              url: postUrl,
+              title: post.title,
+              description,
+              publishedAt: post.publishedAt,
+              updatedAt: post.updatedAt,
+              image: imageUrl,
+              tags: post.tags.map((tag) => tag.title),
+              wordCount: countWords(markdown),
+              readingMinutes: readingMinutes(markdown),
+            }),
+            breadcrumbNode([
+              { name: 'Home', url: `${SITE_URL}/` },
+              { name: post.title, url: postUrl },
+            ]),
+          ]}
         />
         <Header />
         <article className='mb-32'>
           <PostHeader
             title={post.title}
             coverImage={post.coverImage.url}
+            coverImageAlt={post.coverImage.alt}
             date={post.publishedAt}
             showDate={false}
           />
           <div className='max-w-2xl mx-auto'>
             <div className='mb-3 text-lg'>
               <div className='flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4'>
+                <p className='inline-flex items-center gap-2'>
+                  {post.author.picture ? (
+                    <Image
+                      src={post.author.picture}
+                      alt={post.author.name}
+                      width={28}
+                      height={28}
+                      className='h-7 w-7 rounded-full object-cover'
+                    />
+                  ) : null}
+                  <span>{post.author.name}</span>
+                </p>
                 <p className='inline-flex items-center gap-2'>
                   <DateFormatter dateString={post.publishedAt} />
                 </p>
@@ -170,12 +161,13 @@ export default async function Post(props: Params) {
             {post.tags?.length ? (
               <div className='mb-6 flex flex-wrap gap-2'>
                 {post.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className='rounded-full border border-neutral-300 px-3 py-1 text-sm text-neutral-700 dark:border-slate-500 dark:text-slate-200'
+                  <Link
+                    key={tag.slug}
+                    href={`/tags/${tag.slug}`}
+                    className='rounded-full border border-neutral-300 px-3 py-1 text-sm text-neutral-700 transition-colors hover:border-sky-600 hover:text-sky-700 dark:border-slate-500 dark:text-slate-200 dark:hover:border-sky-400 dark:hover:text-sky-400'
                   >
-                    {tag}
-                  </span>
+                    {tag.title}
+                  </Link>
                 ))}
               </div>
             ) : null}
@@ -187,13 +179,17 @@ export default async function Post(props: Params) {
                   On this page
                 </p>
                 <nav aria-label='Table of contents'>
-                  <PostToc items={tocItems} postSlug={post.slug} postTitle={post.title} />
+                  <PostToc
+                    items={tocItems}
+                    postSlug={post.slug}
+                    postTitle={post.title}
+                  />
                 </nav>
               </div>
             </div>
           ) : null}
           <div className='mt-10'>
-            <PostBody content={contentWithHeadingIds} />
+            <PostBody content={html} />
           </div>
           <PostShare
             title={post.title}
@@ -204,7 +200,10 @@ export default async function Post(props: Params) {
           {previousPost || nextPost ? (
             <section className='mx-auto mt-12 max-w-2xl border-t border-slate-300/70 pt-8 dark:border-slate-700/80'>
               <h2 className='mb-4 text-3xl leading-snug'>Keep reading</h2>
-              <nav aria-label='Post navigation' className='grid gap-4 md:grid-cols-2'>
+              <nav
+                aria-label='Post navigation'
+                className='grid gap-4 md:grid-cols-2'
+              >
                 <div>
                   {previousPost ? (
                     <Link
@@ -215,7 +214,7 @@ export default async function Post(props: Params) {
                         <div className='mb-3 overflow-hidden rounded-md'>
                           <Image
                             src={previousPost.coverImage.url}
-                            alt={`Cover image for ${previousPost.title}`}
+                            alt={previousPost.coverImage.alt}
                             width={640}
                             height={360}
                             className='h-auto w-full transition-transform duration-300 group-hover:scale-[1.02]'
@@ -241,7 +240,7 @@ export default async function Post(props: Params) {
                         <div className='mb-3 overflow-hidden rounded-md'>
                           <Image
                             src={nextPost.coverImage.url}
-                            alt={`Cover image for ${nextPost.title}`}
+                            alt={nextPost.coverImage.alt}
                             width={640}
                             height={360}
                             className='h-auto w-full transition-transform duration-300 group-hover:scale-[1.02]'
@@ -280,42 +279,57 @@ export async function generateMetadata(props: Params): Promise<Metadata> {
     return notFound();
   }
 
-  const brandedTitle = `${post.title} | deployed by nischal`;
-  const description =
-    post.excerpt || post.subtitle || `Read ${post.title} on deployed by nischal.`;
-  const canonicalUrl = `https://blog.nischalnikit.xyz/posts/${post.slug}`;
-  const imageUrl = post.coverImage.url || 'https://blog.nischalnikit.xyz/opengraph-image.png';
+  const title = post.seoTitle || post.title;
+  const brandedTitle = `${title} | ${SITE_NAME}`;
+  const description = describe(post);
+  const canonicalUrl = `${SITE_URL}/posts/${post.slug}`;
 
   return {
-    title: post.title,
+    title,
     description,
     alternates: {
       canonical: canonicalUrl,
+      types: {
+        'application/rss+xml': `${SITE_URL}/feed.xml`,
+        'text/markdown': `${canonicalUrl}/raw`,
+      },
     },
     openGraph: {
       type: 'article',
       title: brandedTitle,
       description,
       url: canonicalUrl,
-      siteName: 'deployed by nischal',
+      siteName: SITE_NAME,
+      locale: SITE_LOCALE,
       publishedTime: post.publishedAt || undefined,
-      images: [
-        {
-          url: imageUrl,
-          alt: post.title,
-        },
-      ],
+      modifiedTime: post.updatedAt || post.publishedAt || undefined,
+      authors: [post.author.name],
+      tags: post.tags.map((tag) => tag.title),
+      // Explicit images intentionally override the file-convention default card.
+      ...(post.ogImageUrl
+        ? {
+            images: [
+              {
+                url: post.ogImageUrl,
+                width: 1200,
+                height: 630,
+                alt: post.coverImage.alt,
+              },
+            ],
+          }
+        : {}),
     },
     twitter: {
       card: 'summary_large_image',
       title: brandedTitle,
       description,
-      images: [imageUrl],
+      site: TWITTER_HANDLE,
+      creator: TWITTER_HANDLE,
     },
   };
 }
 
 export async function generateStaticParams() {
-  const slugs = await getAllPostSlugs();
-  return slugs.map((slug) => ({ slug }));
+  const posts = await getAllPosts();
+  return posts.map((post) => ({ slug: post.slug }));
 }

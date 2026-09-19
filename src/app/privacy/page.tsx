@@ -1,5 +1,14 @@
+import type { Metadata } from 'next';
 import Header from '@/app/_components/header';
 import Container from '@/app/_components/container';
+import { SITE_NAME } from '@/lib/constants';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description: `How ${SITE_NAME} handles analytics and visitor data.`,
+  alternates: { canonical: '/privacy' },
+  robots: { index: false, follow: true },
+};
 
 export default function PrivacyPage() {
   return (

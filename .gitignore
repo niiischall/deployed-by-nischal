@@ -40,3 +40,5 @@ coverage/
 
 # Ignore dependency directories
 vendor/
+.vercel
+.env.local

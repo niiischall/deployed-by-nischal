@@ -1,8 +1,16 @@
 import { Post } from '@/interfaces/post';
-import { allPostsQuery, postBySlugQuery, postSlugsQuery } from './sanity/queries';
+import {
+  allPostsQuery,
+  allPostsWithContentQuery,
+  postBySlugQuery,
+} from './sanity/queries';
 import { isSanityConfigured, sanityClient } from './sanity/client';
 import { SanityPost } from './sanity/types';
-import { resolveSanityImageUrl } from './sanity/image';
+import {
+  resolveAvatarUrl,
+  resolveOgImageUrl,
+  resolveSanityImageUrl,
+} from './sanity/image';
 
 export const REVALIDATE_SECONDS = 60;
 
@@ -12,32 +20,48 @@ const mapSanityPostToPost = (post: SanityPost): Post => ({
   title: post.title,
   subtitle: post.excerpt || '',
   publishedAt: post.publishedAt || new Date(0).toISOString(),
+  updatedAt: post._updatedAt || post.publishedAt || new Date(0).toISOString(),
   coverImage: {
     url: resolveSanityImageUrl(post.coverImage, post.coverImageUrl),
+    alt: post.coverImage?.alt || `Cover image for ${post.title}`,
   },
+  ogImageUrl: resolveOgImageUrl(
+    post.ogImage,
+    post.coverImage,
+    post.coverImageUrl,
+  ),
   excerpt: post.excerpt || '',
+  seoTitle: post.seoTitle,
+  seoDescription: post.seoDescription,
   author: {
     name: post.author?.name || 'Unknown author',
-    picture: '',
+    picture: resolveAvatarUrl(post.author?.picture),
   },
   content: {
     markdown: post.markdown || '',
   },
-  tags: post.tags?.map((tag) => tag.title) || [],
+  tags:
+    post.tags
+      ?.filter((tag) => Boolean(tag.slug))
+      .map((tag) => ({ title: tag.title, slug: tag.slug as string })) || [],
 });
 
-export const getAllPosts = async (): Promise<Post[]> => {
+const fetchPosts = async (query: string): Promise<Post[]> => {
   if (!isSanityConfigured) {
     console.warn(
-      'Sanity is not configured. Set NEXT_PUBLIC_SANITY_PROJECT_ID and NEXT_PUBLIC_SANITY_DATASET.'
+      'Sanity is not configured. Set NEXT_PUBLIC_SANITY_PROJECT_ID and NEXT_PUBLIC_SANITY_DATASET.',
     );
     return [];
   }
 
   try {
-    const posts = await sanityClient.fetch<SanityPost[]>(allPostsQuery, {}, {
-      next: { revalidate: REVALIDATE_SECONDS },
-    });
+    const posts = await sanityClient.fetch<SanityPost[]>(
+      query,
+      {},
+      {
+        next: { revalidate: REVALIDATE_SECONDS },
+      },
+    );
     return posts.map(mapSanityPostToPost).filter((post) => Boolean(post.slug));
   } catch (error) {
     console.error('Failed to fetch posts from Sanity:', error);
@@ -45,9 +69,14 @@ export const getAllPosts = async (): Promise<Post[]> => {
   }
 };
 
-export const fetchPostBySlug = async (
-  slug: string
-): Promise<Post | null> => {
+export const getAllPosts = async (): Promise<Post[]> =>
+  fetchPosts(allPostsQuery);
+
+// Carries every post body. Only for /feed.xml and /llms-full.txt.
+export const getAllPostsWithContent = async (): Promise<Post[]> =>
+  fetchPosts(allPostsWithContentQuery);
+
+export const fetchPostBySlug = async (slug: string): Promise<Post | null> => {
   if (!isSanityConfigured) {
     return null;
   }
@@ -58,31 +87,11 @@ export const fetchPostBySlug = async (
       { slug },
       {
         next: { revalidate: REVALIDATE_SECONDS },
-      }
+      },
     );
     return post ? mapSanityPostToPost(post) : null;
   } catch (error) {
     console.error(`Failed to fetch post "${slug}" from Sanity:`, error);
     return null;
-  }
-};
-
-export const getAllPostSlugs = async (): Promise<string[]> => {
-  if (!isSanityConfigured) {
-    return [];
-  }
-
-  try {
-    const slugs = await sanityClient.fetch<Array<{ slug: string }>>(
-      postSlugsQuery,
-      {},
-      {
-        next: { revalidate: REVALIDATE_SECONDS },
-      }
-    );
-    return slugs.map((entry) => entry.slug).filter(Boolean);
-  } catch (error) {
-    console.error('Failed to fetch post slugs from Sanity:', error);
-    return [];
   }
 };

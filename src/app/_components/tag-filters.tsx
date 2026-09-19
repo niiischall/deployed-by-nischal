@@ -1,24 +1,16 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import posthog from 'posthog-js';
 
+import { PostTag } from '@/interfaces/post';
+
 type Props = {
-  tags: string[];
+  tags: PostTag[];
   activeTag: string | null;
 };
 
-const buildTagHref = (tag: string | null) => {
-  if (!tag) {
-    return '/';
-  }
-
-  const params = new URLSearchParams();
-  params.set('tag', tag);
-  return `/?${params.toString()}`;
-};
-
-const getButtonClassName = (isActive: boolean) =>
+const getLinkClassName = (isActive: boolean) =>
   `rounded-full border px-3 py-1 text-sm transition-colors ${
     isActive
       ? 'border-black bg-black text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
@@ -26,45 +18,15 @@ const getButtonClassName = (isActive: boolean) =>
   }`;
 
 export const TagFilters = ({ tags, activeTag }: Props) => {
-  const router = useRouter();
+  const activeTitle = tags.find((tag) => tag.slug === activeTag)?.title ?? null;
 
-  const scrollToEarlierDeployments = () => {
-    const tryScroll = () => {
-      const target = document.getElementById('earlier-deployments');
-
-      if (!target) {
-        return false;
-      }
-
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return true;
-    };
-
-    if (tryScroll()) {
-      return;
-    }
-
-    window.requestAnimationFrame(() => {
-      if (tryScroll()) {
-        return;
-      }
-
-      window.setTimeout(() => {
-        tryScroll();
-      }, 120);
-    });
-  };
-
-  const handleFilterSelect = (tag: string | null) => {
+  const trackFilterSelect = (tag: PostTag | null) => {
     posthog.capture('Tag Filter Clicked', {
-      selected_tag: tag ?? 'all',
-      previous_tag: activeTag ?? 'all',
+      selected_tag: tag?.title ?? 'all',
+      previous_tag: activeTitle ?? 'all',
       selected_all_tags: tag === null,
-      was_already_active: activeTag === tag,
+      was_already_active: activeTag === (tag?.slug ?? null),
     });
-
-    router.push(buildTagHref(tag), { scroll: false });
-    scrollToEarlierDeployments();
   };
 
   if (!tags.length) {
@@ -73,26 +35,28 @@ export const TagFilters = ({ tags, activeTag }: Props) => {
 
   return (
     <section className='mb-10'>
-      <h2 className='mb-4 text-xl font-semibold tracking-tight'>Filter by tag</h2>
+      <h2 className='mb-4 text-xl font-semibold tracking-tight'>
+        Filter by tag
+      </h2>
       <div className='flex flex-wrap gap-2'>
-        <button
-          type='button'
-          onClick={() => handleFilterSelect(null)}
-          className={getButtonClassName(!activeTag)}
-          aria-pressed={!activeTag}
+        <Link
+          href='/'
+          onClick={() => trackFilterSelect(null)}
+          className={getLinkClassName(!activeTag)}
+          aria-current={!activeTag ? 'page' : undefined}
         >
           All
-        </button>
+        </Link>
         {tags.map((tag) => (
-          <button
-            key={tag}
-            type='button'
-            onClick={() => handleFilterSelect(tag)}
-            className={getButtonClassName(activeTag === tag)}
-            aria-pressed={activeTag === tag}
+          <Link
+            key={tag.slug}
+            href={`/tags/${tag.slug}`}
+            onClick={() => trackFilterSelect(tag)}
+            className={getLinkClassName(activeTag === tag.slug)}
+            aria-current={activeTag === tag.slug ? 'page' : undefined}
           >
-            {tag}
-          </button>
+            {tag.title}
+          </Link>
         ))}
       </div>
     </section>

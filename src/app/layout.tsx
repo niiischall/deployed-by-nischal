@@ -1,10 +1,19 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Ovo } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 import Footer from './_components/footer';
 import { ThemeScript } from './_components/theme-switcher';
 import { PostHogProvider } from './providers';
+import {
+  AUTHOR_NAME,
+  AUTHOR_URL,
+  SITE_DESCRIPTION,
+  SITE_LOCALE,
+  SITE_NAME,
+  SITE_URL,
+  TWITTER_HANDLE,
+} from '@/lib/constants';
 import './globals.css';
 import './highlight.css';
 
@@ -15,13 +24,43 @@ const ovo = Ovo({
   display: 'swap',
 });
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#EEEAE3' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
+};
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://blog.nischalnikit.xyz'),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: 'deployed by nischal',
-    template: '%s | deployed by nischal',
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: `A collection of writeups by nischal nikit`,
+  description: SITE_DESCRIPTION,
+  authors: [{ name: AUTHOR_NAME, url: AUTHOR_URL }],
+  creator: AUTHOR_NAME,
+  publisher: AUTHOR_NAME,
+  alternates: {
+    types: {
+      'application/rss+xml': '/feed.xml',
+      'text/plain': '/llms.txt',
+    },
+  },
+  // No `images` key here on purpose: that is what lets the opengraph-image.png
+  // file convention supply the default card for every route. No title/description
+  // either, so each page's own values flow into og: rather than being shadowed.
+  openGraph: {
+    type: 'website',
+    url: '/',
+    siteName: SITE_NAME,
+    locale: SITE_LOCALE,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: TWITTER_HANDLE,
+    creator: TWITTER_HANDLE,
+  },
   manifest: '/favicon/site.webmanifest',
   icons: {
     icon: [
@@ -50,23 +89,11 @@ export default function RootLayout({
       lang='en'
       className={`${ovo.variable} scroll-smooth motion-reduce:scroll-auto`}
     >
-      <head>
-        <meta name='theme-color' content='#EEEAE3'></meta>
-        <meta property='og:image' content='<generated>' />
-        <meta property='og:image:alt' content='deployed by nischal' />
-        <meta property='og:image:type' content='image/png' />
-        <meta property='og:image:width' content='1200' />
-        <meta property='og:image:height' content='630' />
-        <meta name='twitter:image' content='<generated>' />
-        <meta name='twitter:image:type' content='<generated>' />
-        <meta name='twitter:image:width' content='<generated>' />
-        <meta name='twitter:image:height' content='<generated>' />
-      </head>
       <body className={'bg-light dark:bg-slate-900 dark:text-slate-200'}>
         <PostHogProvider>
           <ThemeScript />
           <div className='flex min-h-screen flex-col'>
-            <main className='flex-1'>{children}</main>
+            <div className='flex-1'>{children}</div>
             <Footer />
           </div>
         </PostHogProvider>

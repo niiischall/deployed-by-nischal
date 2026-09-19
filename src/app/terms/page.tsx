@@ -1,5 +1,14 @@
+import type { Metadata } from 'next';
 import Header from '@/app/_components/header';
 import Container from '@/app/_components/container';
+import { SITE_NAME } from '@/lib/constants';
+
+export const metadata: Metadata = {
+  title: 'Terms of Use',
+  description: `Terms covering the use of content published on ${SITE_NAME}.`,
+  alternates: { canonical: '/terms' },
+  robots: { index: false, follow: true },
+};
 
 export default function TermsPage() {
   return (

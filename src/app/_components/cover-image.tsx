@@ -6,9 +6,11 @@ type Props = {
   title: string;
   src?: string;
   slug?: string;
+  alt?: string;
+  priority?: boolean;
 };
 
-const CoverImage = ({ title, src, slug }: Props) => {
+const CoverImage = ({ title, src, slug, alt, priority }: Props) => {
   if (!src) {
     return (
       <div>
@@ -20,12 +22,14 @@ const CoverImage = ({ title, src, slug }: Props) => {
   const image = (
     <Image
       src={src}
-      alt={`Cover Image for ${title}`}
+      alt={alt || `Cover image for ${title}`}
       className={cn('shadow-sm w-full', {
         'hover:shadow-lg transition-shadow duration-200': slug,
       })}
       width={1300}
       height={630}
+      sizes='(max-width: 768px) 100vw, 768px'
+      priority={priority}
     />
   );
   return (

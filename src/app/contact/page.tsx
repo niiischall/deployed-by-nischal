@@ -1,6 +1,14 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Header from '@/app/_components/header';
 import Container from '@/app/_components/container';
+import { AUTHOR_NAME } from '@/lib/constants';
+
+export const metadata: Metadata = {
+  title: 'Contact',
+  description: `Get in touch with ${AUTHOR_NAME} about collaborations, feedback or questions on anything written here.`,
+  alternates: { canonical: '/contact' },
+};
 
 export default function ContactPage() {
   return (

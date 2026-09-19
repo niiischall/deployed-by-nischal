@@ -34,6 +34,17 @@ export const postType = defineType({
       options: {
         hotspot: true,
       },
+      fields: [
+        defineField({
+          name: 'alt',
+          title: 'Alt text',
+          type: 'string',
+          description:
+            'Describes the image for screen readers and search engines.',
+          validation: (rule) =>
+            rule.max(125).warning('Keep alt text under 125 characters.'),
+        }),
+      ],
     }),
     defineField({
       name: 'coverImageUrl',
@@ -41,6 +52,13 @@ export const postType = defineType({
       type: 'url',
       description:
         'Optional URL fallback useful during migrations before uploading images into Sanity assets.',
+    }),
+    defineField({
+      name: 'ogImage',
+      title: 'Social share card',
+      type: 'image',
+      description:
+        '1200x630 PNG used when this post is shared on LinkedIn, X or Slack. Falls back to the cover image.',
     }),
     defineField({
       name: 'publishedAt',
@@ -72,6 +90,29 @@ export const postType = defineType({
           to: [{ type: 'tag' }],
         }),
       ],
+    }),
+    defineField({
+      name: 'seoTitle',
+      title: 'SEO title',
+      type: 'string',
+      description:
+        'Overrides the title shown in search results. Falls back to the post title.',
+      validation: (rule) =>
+        rule.max(60).warning('Titles over 60 characters get truncated.'),
+    }),
+    defineField({
+      name: 'seoDescription',
+      title: 'SEO description',
+      type: 'text',
+      rows: 2,
+      description:
+        'The snippet shown in search results. Falls back to the excerpt.',
+      validation: (rule) =>
+        rule
+          .min(50)
+          .warning('Aim for at least 50 characters.')
+          .max(160)
+          .warning('Descriptions over 160 characters get truncated.'),
     }),
   ],
   preview: {

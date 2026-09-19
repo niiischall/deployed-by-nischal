@@ -3,23 +3,9 @@ import Link from 'next/link';
 type Props = {
   currentPage: number;
   totalPages: number;
-  activeTag: string | null;
 };
 
-const buildPageHref = (page: number, activeTag: string | null) => {
-  const params = new URLSearchParams();
-
-  if (page > 1) {
-    params.set('page', page.toString());
-  }
-
-  if (activeTag) {
-    params.set('tag', activeTag);
-  }
-
-  const queryString = params.toString();
-  return queryString ? `/?${queryString}` : '/';
-};
+const buildPageHref = (page: number) => (page > 1 ? `/?page=${page}` : '/');
 
 const getLinkClassName = (isActive: boolean) =>
   `rounded-md border px-3 py-1 text-sm transition-colors ${
@@ -28,7 +14,7 @@ const getLinkClassName = (isActive: boolean) =>
       : 'border-neutral-300 text-neutral-700 hover:border-neutral-500 hover:text-black dark:border-slate-500 dark:text-slate-200 dark:hover:border-slate-300 dark:hover:text-white'
   }`;
 
-export const Pagination = ({ currentPage, totalPages, activeTag }: Props) => {
+export const Pagination = ({ currentPage, totalPages }: Props) => {
   if (totalPages <= 1) {
     return null;
   }
@@ -42,7 +28,7 @@ export const Pagination = ({ currentPage, totalPages, activeTag }: Props) => {
     >
       {currentPage > 1 ? (
         <Link
-          href={buildPageHref(currentPage - 1, activeTag)}
+          href={buildPageHref(currentPage - 1)}
           className={getLinkClassName(false)}
         >
           Previous
@@ -52,7 +38,7 @@ export const Pagination = ({ currentPage, totalPages, activeTag }: Props) => {
       {pages.map((page) => (
         <Link
           key={page}
-          href={buildPageHref(page, activeTag)}
+          href={buildPageHref(page)}
           className={getLinkClassName(page === currentPage)}
           aria-current={page === currentPage ? 'page' : undefined}
         >
@@ -62,7 +48,7 @@ export const Pagination = ({ currentPage, totalPages, activeTag }: Props) => {
 
       {currentPage < totalPages ? (
         <Link
-          href={buildPageHref(currentPage + 1, activeTag)}
+          href={buildPageHref(currentPage + 1)}
           className={getLinkClassName(false)}
         >
           Next

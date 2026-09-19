@@ -61,3 +61,16 @@
 .markdown hr {
   @apply my-10 border-slate-300;
 }
+
+.markdown :global(.heading-anchor) {
+  @apply ml-2 no-underline text-slate-400 opacity-0 transition-opacity;
+}
+
+.markdown h2:hover :global(.heading-anchor),
+.markdown h3:hover :global(.heading-anchor),
+.markdown h4:hover :global(.heading-anchor),
+.markdown h5:hover :global(.heading-anchor),
+.markdown h6:hover :global(.heading-anchor),
+.markdown :global(.heading-anchor):focus-visible {
+  @apply opacity-100;
+}
