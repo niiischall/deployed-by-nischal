@@ -10,6 +10,7 @@ import {
 
 export const PERSON_ID = `${SITE_URL}/#person`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
+export const ORGANIZATION_ID = `${SITE_URL}/#organization`;
 
 export const personNode = (image?: string) => ({
   '@type': 'Person',
@@ -20,6 +21,19 @@ export const personNode = (image?: string) => ({
   ...(image ? { image } : {}),
 });
 
+export const organizationNode = () => ({
+  '@type': 'Organization',
+  '@id': ORGANIZATION_ID,
+  name: SITE_NAME,
+  url: `${SITE_URL}/`,
+  logo: {
+    '@type': 'ImageObject',
+    url: `${SITE_URL}/favicon/android-chrome-512x512.png`,
+    width: 512,
+    height: 512,
+  },
+});
+
 export const websiteNode = () => ({
   '@type': 'WebSite',
   '@id': WEBSITE_ID,
@@ -27,7 +41,7 @@ export const websiteNode = () => ({
   name: SITE_NAME,
   description: SITE_DESCRIPTION,
   inLanguage: SITE_LANGUAGE,
-  publisher: { '@id': PERSON_ID },
+  publisher: { '@id': ORGANIZATION_ID },
 });
 
 export const blogPostingNode = (post: {
@@ -60,7 +74,7 @@ export const blogPostingNode = (post: {
       }
     : {}),
   author: { '@id': PERSON_ID },
-  publisher: { '@id': PERSON_ID },
+  publisher: { '@id': ORGANIZATION_ID },
   isPartOf: { '@id': WEBSITE_ID },
   mainEntityOfPage: { '@type': 'WebPage', '@id': post.url },
 });

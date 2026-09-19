@@ -9,7 +9,7 @@ import { MoreStories } from '@/app/_components/more-stories';
 import { SectionSeparator } from '@/app/_components/section-separator';
 import { TagFilters } from '@/app/_components/tag-filters';
 import { getAllPosts } from '@/lib/api';
-import { personNode, websiteNode } from '@/lib/jsonLd';
+import { organizationNode, personNode, websiteNode } from '@/lib/jsonLd';
 import { SITE_NAME } from '@/lib/constants';
 
 export const revalidate = 60;
@@ -100,6 +100,7 @@ export default async ({
         <JsonLd
           nodes={[
             personNode(heroPost?.author.picture || undefined),
+            organizationNode(),
             websiteNode(),
           ]}
         />

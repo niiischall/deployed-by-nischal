@@ -18,6 +18,7 @@ import { calculateReadingTime, countWords, readingMinutes } from '@/lib/utils';
 import {
   blogPostingNode,
   breadcrumbNode,
+  organizationNode,
   personNode,
   websiteNode,
 } from '@/lib/jsonLd';
@@ -79,6 +80,7 @@ export default async function Post(props: Params) {
         <JsonLd
           nodes={[
             personNode(post.author.picture || undefined),
+            organizationNode(),
             websiteNode(),
             blogPostingNode({
               url: postUrl,
