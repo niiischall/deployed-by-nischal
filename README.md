@@ -42,8 +42,10 @@ Personal blog at [blog.nischalnikit.xyz](https://blog.nischalnikit.xyz) — buil
    ```
 2. Use the same project id + dataset values in `.env.local`.
 3. Open Studio (`/studio`) and create:
-   - At least one `author` document (optional but recommended)
-   - Any `tag` documents (optional)
+   - At least one `author` document (optional but recommended). Upload a
+     `picture` — it drives the post byline and the `Person` structured data.
+   - Any `tag` documents. Each needs a `slug`; that is what publishes the tag's
+     hub page at `/tags/{slug}`. Tags without a slug are skipped everywhere.
    - A `post` document with:
      - `title`
      - `slug`
@@ -51,7 +53,26 @@ Personal blog at [blog.nischalnikit.xyz](https://blog.nischalnikit.xyz) — buil
      - `publishedAt`
      - `markdown` (required; this is rendered by the frontend)
      - optional `coverImage` (or `coverImageUrl` fallback during migration)
+     - optional `ogImage` — see below
+     - optional `seoTitle` / `seoDescription` to override the search snippet
 4. Publish the post from Studio.
+
+### Social share cards
+
+Link previews on LinkedIn, X and Slack resolve in this order:
+
+```
+post.ogImage  →  post.coverImage  →  src/app/opengraph-image.png (site default)
+```
+
+Upload a **1200x630** PNG to `ogImage` when a post deserves a purpose-built card
+(one with the headline set in type reads better than a photo). Leave it empty and
+the cover image is used automatically — no code change either way.
+
+Social platforms cache the first scrape aggressively (LinkedIn for roughly a
+week), so run a new post through the
+[LinkedIn Post Inspector](https://www.linkedin.com/post-inspector/) before
+sharing it, not after.
 
 ## Content migration helper
 
